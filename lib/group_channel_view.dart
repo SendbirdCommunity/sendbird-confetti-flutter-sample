@@ -126,6 +126,21 @@ class _GroupChannelViewState extends State<GroupChannelView>
     return false;
   }
 
+  String stringifiedMetaArray(List<MessageMetaArray>? arrays) {
+    if (arrays == null) {
+      return "";
+    }
+    if (arrays.length == 0) {
+      return "[]";
+    }
+    String result = "[\n";
+    for (MessageMetaArray array in arrays) {
+      result = result + "${array.key} : ${array.value}\n";
+    }
+    result = result + "]";
+    return result;
+  }
+
   Future<void> markConfettiMessageRead(
       BaseMessage message, GroupChannel channel, String userId) async {
     List<MessageMetaArray>? existingArrays = message.metaArrays;
@@ -133,11 +148,11 @@ class _GroupChannelViewState extends State<GroupChannelView>
     if (existingArrays == null) {
       print(
           'group_channel_view: markConfettiMessageRead: No prior messageMetaArray found for message: ${message.message}. Creating a new one...');
-      await channel.addMessageMetaArray(message, [
+      BaseMessage updatedMessage = await channel.addMessageMetaArray(message, [
         MessageMetaArray(key: _messageMetaConfettiKey, value: [userId])
       ]);
       print(
-          'group_channel_view: markConfettiMessageRead: messageMetaArray added: ${message.metaArrays}');
+          'group_channel_view: markConfettiMessageRead: messageMetaArray added: ${stringifiedMetaArray(updatedMessage.metaArrays)} to ${message.message}');
       return;
     }
     // metaArrays exist, see if one has a matching confetti key
@@ -151,9 +166,9 @@ class _GroupChannelViewState extends State<GroupChannelView>
               'group_channel_view: confettiMessageAlreadyDisplayedFor: adding $userId to $_messageMetaConfettiKey messageMetaArray for message: ${message.message}');
           existingList.add(userId);
           // No update API, so we'll remove and add a new messageMetaArray
-          await channel.removeMessageMetaArray(message, [array]);
+          // await channel.removeMessageMetaArray(message, [array]);
           await channel.addMessageMetaArray(message, [
-            MessageMetaArray(key: _messageMetaConfettiKey, value: existingList)
+            MessageMetaArray(key: _messageMetaConfettiKey, value: [userId])
           ]);
         }
         return;
