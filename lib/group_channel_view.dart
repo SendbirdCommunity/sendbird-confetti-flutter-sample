@@ -3,6 +3,7 @@ import 'package:dash_chat_2/dash_chat_2.dart';
 import 'package:sendbird_sdk/sendbird_sdk.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'package:confetti/confetti.dart';
 
 class GroupChannelView extends StatefulWidget {
   final GroupChannel groupChannel;
@@ -16,6 +17,11 @@ class GroupChannelView extends StatefulWidget {
 class _GroupChannelViewState extends State<GroupChannelView>
     with ChannelEventHandler {
   List<BaseMessage> _messages = [];
+  late ConfettiController _confettiController =
+      ConfettiController(duration: const Duration(seconds: 10));
+  List<String> _caselessConfettiKeywords = ['congrats', 'congratulations'];
+  static String _messageMetaConfettiKey = "shownConfetti";
+
   @override
   void initState() {
     super.initState();
@@ -26,23 +32,153 @@ class _GroupChannelViewState extends State<GroupChannelView>
   @override
   void dispose() {
     SendbirdSdk().removeChannelEventHandler(widget.groupChannel.channelUrl);
+    _confettiController.dispose();
     super.dispose();
   }
 
   @override
   onMessageReceived(channel, message) {
-    setState(() {
-      _messages.add(message);
+    processForConfetti(message, channel);
+
+    if (mounted == true) {
+      setState(() {
+        // Add the message to this UI instance
+        _messages.add(message);
+      });
+    }
+  }
+
+  Future<void> processForConfetti(
+      BaseMessage message, BaseChannel channel) async {
+    // See if this incoming message contains any confetti keywords
+    if (shouldTriggerConfettiFor(message) == false) {
+      return;
+    }
+    // It is worthy - Play confetti
+    _confettiController.play();
+    // Let's mark it as having triggered confetti action
+    await markConfettiMessageRead(message, channel as GroupChannel,
+        SendbirdSdk().currentUser?.userId ?? "");
+    // Stop confetti action in near future
+    Timer(Duration(seconds: 4), () {
+      _confettiController.stop();
     });
+  }
+
+  bool shouldTriggerConfettiFor(BaseMessage message) {
+    User? sbUser = SendbirdSdk().currentUser;
+    if (sbUser == null) {
+      print(
+          'group_channel_view: shouldTriggerConfettiFor: no current sendbird user. Returning false.');
+      return false;
+    }
+    // Ignore if sender is the current user
+    if (message.sender == sbUser) {
+      return false;
+    }
+    // Does message contain target word(s)
+    bool containsConfettiKeywords =
+        stringContainsOneOf(_caselessConfettiKeywords, message.message);
+    if (containsConfettiKeywords == false) {
+      return false;
+    }
+    // If confetti has already been displayed for this message - bail
+    if (confettiMessageAlreadyDisplayedFor(message, sbUser.userId)) {
+      print(
+          'group_channel_view: shouldTriggerConfettiFor: Confetti already displayed to this user. Returning false.');
+      return false;
+    }
+    return true;
+  }
+
+  bool confettiMessageAlreadyDisplayedFor(BaseMessage message, String userId) {
+    List<MessageMetaArray> arrays =
+        message.getMetaArrays([_messageMetaConfettiKey]);
+    // Pre-existing meta record not recorded - message has
+    if (arrays.isEmpty) {
+      print(
+          'group_channel_view: confettiMessageAlreadyDisplayedFor: No prior messageMetaArray info found for message: ${message.message}');
+      return false;
+    }
+    MessageMetaArray array = arrays[0];
+    if (array.value.contains(userId) == false) {
+      print(
+          'group_channel_view: confettiMessageAlreadyDisplayedFor: userId $userId not found in $_messageMetaConfettiKey key of messageMetaArray for message: ${message.message}');
+      return false;
+    }
+    return true;
+  }
+
+  bool stringContainsOneOf(List<String> keywords, String string,
+      {bool caseSensitive = false}) {
+    for (String keyword in keywords) {
+      // Is keyword in message
+      RegExp exp = new RegExp(
+        "\\b" + keyword + "\\b",
+        caseSensitive: caseSensitive,
+      );
+      bool match = exp.hasMatch(string);
+      // Return true if any of the target keywords are in the given string
+      if (match == true) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Future<void> markConfettiMessageRead(
+      BaseMessage message, GroupChannel channel, String userId) async {
+    List<MessageMetaArray>? existingArrays = message.metaArrays;
+    // No metaArray at all previously exists - create a new one
+    if (existingArrays == null) {
+      print(
+          'group_channel_view: markConfettiMessageRead: No prior messageMetaArray found for message: ${message.message}. Creating a new one...');
+      await channel.addMessageMetaArray(message, [
+        MessageMetaArray(key: _messageMetaConfettiKey, value: [userId])
+      ]);
+      print(
+          'group_channel_view: markConfettiMessageRead: messageMetaArray added: ${message.metaArrays}');
+      return;
+    }
+    // metaArrays exist, see if one has a matching confetti key
+    for (MessageMetaArray array in existingArrays) {
+      // Process any messageMetaArrays with target key
+      if (array.key == _messageMetaConfettiKey) {
+        List<String> existingList = array.value;
+        // Check if userId already in existing list before continuing
+        if (existingList.contains(userId) == false) {
+          print(
+              'group_channel_view: confettiMessageAlreadyDisplayedFor: adding $userId to $_messageMetaConfettiKey messageMetaArray for message: ${message.message}');
+          existingList.add(userId);
+          // No update API, so we'll remove and add a new messageMetaArray
+          await channel.removeMessageMetaArray(message, [array]);
+          await channel.addMessageMetaArray(message, [
+            MessageMetaArray(key: _messageMetaConfettiKey, value: existingList)
+          ]);
+        }
+        return;
+      }
+    }
+    // No prior messageMetaArray for confetti tracking found, add it
+    await channel.addMessageMetaArray(message, [
+      MessageMetaArray(key: _messageMetaConfettiKey, value: [userId])
+    ]);
+    return;
   }
 
   Future<void> getMessages(GroupChannel channel) async {
     try {
       List<BaseMessage> messages = await channel.getMessagesByTimestamp(
           DateTime.now().millisecondsSinceEpoch * 1000, MessageListParams());
-      setState(() {
-        _messages = messages;
-      });
+      // See if any confetti worthy messages were received while we were offline
+      for (BaseMessage message in messages) {
+        processForConfetti(message, channel);
+      }
+      if (mounted == true) {
+        setState(() {
+          _messages = messages;
+        });
+      }
     } catch (e) {
       print('group_channel_view.dart: getMessages: ERROR: $e');
     }
@@ -81,40 +217,62 @@ class _GroupChannelViewState extends State<GroupChannelView>
       return Container();
     }
     ChatUser user = asDashChatUser(sbUser);
-    return Padding(
+    return SafeArea(
       // A little breathing room for devices with no home button.
-      padding: const EdgeInsets.fromLTRB(8, 8, 8, 40),
-      child: DashChat(
-        // showUserAvatar: true,
-        key: Key(widget.groupChannel.channelUrl),
-        onSend: (ChatMessage message) async {
-          var sentMessage =
-              widget.groupChannel.sendUserMessageWithText(message.text);
-          setState(() {
-            _messages.add(sentMessage);
-          });
-        },
-        // sendOnEnter: true,
-        // textInputAction: TextInputAction.send,
-        currentUser: user,
-        messages: asDashChatMessages(_messages),
-        inputOptions: const InputOptions(
-          inputDecoration:
-              InputDecoration.collapsed(hintText: "Type a message here..."),
+      // padding: const EdgeInsets.fromLTRB(8, 8, 8, 40),
+      child: Stack(children: [
+        Align(
+          alignment: Alignment.topCenter,
+          child: ConfettiWidget(
+            confettiController: _confettiController,
+            blastDirectionality: BlastDirectionality
+                .explosive, // don't specify a direction, blast randomly
+            shouldLoop:
+                true, // start again as soon as the animation is finished
+            colors: const [
+              Colors.green,
+              Colors.blue,
+              Colors.pink,
+              Colors.orange,
+              Colors.purple
+            ], // manually specify the colors to be used
+            // createParticlePath: drawStar, // define a custom shape/path.
+          ),
         ),
-        messageOptions: MessageOptions(
-            // dateFormat: DateFormat("E, MMM d"),
-            timeFormat: DateFormat.jm(),
-            messageDecorationBuilder: (ChatMessage message,
-                ChatMessage? priorMessage, ChatMessage? nextMessage) {
-              return BoxDecoration(
-                borderRadius: const BorderRadius.all(Radius.circular(20.0)),
-                color: user.id == message.user.id
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[200], // example
-              );
-            }),
-      ),
+        DashChat(
+          // showUserAvatar: true,
+          key: Key(widget.groupChannel.channelUrl),
+          onSend: (ChatMessage message) async {
+            var sentMessage =
+                widget.groupChannel.sendUserMessageWithText(message.text);
+            if (mounted == true) {
+              setState(() {
+                _messages.add(sentMessage);
+              });
+            }
+          },
+          // sendOnEnter: true,
+          // textInputAction: TextInputAction.send,
+          currentUser: user,
+          messages: asDashChatMessages(_messages),
+          inputOptions: const InputOptions(
+            inputDecoration:
+                InputDecoration.collapsed(hintText: "Type a message here..."),
+          ),
+          messageOptions: MessageOptions(
+              // dateFormat: DateFormat("E, MMM d"),
+              timeFormat: DateFormat.jm(),
+              messageDecorationBuilder: (ChatMessage message,
+                  ChatMessage? priorMessage, ChatMessage? nextMessage) {
+                return BoxDecoration(
+                  borderRadius: const BorderRadius.all(Radius.circular(20.0)),
+                  color: user.id == message.user.id
+                      ? Theme.of(context).primaryColor
+                      : Colors.grey[200], // example
+                );
+              }),
+        ),
+      ]),
     );
   }
 

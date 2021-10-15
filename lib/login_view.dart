@@ -144,8 +144,8 @@ class LoginViewState extends State<LoginView> {
   Future<User> connect(String appId, String userId) async {
     // Init Sendbird SDK and connect with current user id
     try {
-      final sendbird = SendbirdSdk(appId: appId);
-      final user = await sendbird.connect(userId);
+      SendbirdSdk sendbird = SendbirdSdk(appId: appId);
+      User user = await sendbird.connect(userId);
       return user;
     } catch (e) {
       print('login_view: connect: ERROR: $e');
