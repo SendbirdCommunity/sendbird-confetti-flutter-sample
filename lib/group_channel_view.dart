@@ -48,6 +48,16 @@ class _GroupChannelViewState extends State<GroupChannelView>
     }
   }
 
+  @override
+  onMessageUpdated(channel, message) {
+    // MetaArray data is only available from this callback
+    print(
+        'group_channel_view: onMessageUpdated: $message, metaArray value for confetti key: ${message.getMetaArrays([
+          _messageMetaConfettiKey
+        ])[0].value}');
+    processForConfetti(message, channel);
+  }
+
   Future<void> processForConfetti(
       BaseMessage message, BaseChannel channel) async {
     // See if this incoming message contains any confetti keywords
@@ -73,7 +83,7 @@ class _GroupChannelViewState extends State<GroupChannelView>
       return false;
     }
     // Ignore if sender is the current user
-    if (message.sender == sbUser) {
+    if (message.sender == null || message.sender == sbUser) {
       return false;
     }
     // Does message contain target word(s)
@@ -94,8 +104,10 @@ class _GroupChannelViewState extends State<GroupChannelView>
   bool confettiMessageAlreadyDisplayedFor(BaseMessage message, String userId) {
     List<MessageMetaArray> arrays =
         message.getMetaArrays([_messageMetaConfettiKey]);
+    print(
+        'group_channel_view: confettiMessageAlreadyDisplayedFor: message: ${message.message} metaArrays: ${message.metaArrays}');
     // Pre-existing meta record not recorded - message has
-    if (arrays.isEmpty) {
+    if (arrays.isEmpty == true) {
       print(
           'group_channel_view: confettiMessageAlreadyDisplayedFor: No prior messageMetaArray info found for message: ${message.message}');
       return false;
@@ -143,9 +155,15 @@ class _GroupChannelViewState extends State<GroupChannelView>
 
   Future<void> markConfettiMessageRead(
       BaseMessage message, GroupChannel channel, String userId) async {
-    List<MessageMetaArray>? existingArrays = message.metaArrays;
+    List<MessageMetaArray>? existingArraysProperty = message.metaArrays;
+    List<MessageMetaArray>? existingArrays =
+        message.getMetaArrays([_messageMetaConfettiKey]);
+
+    print(
+        'group_channel_view: message.metaArrays: $existingArraysProperty : message.getMetaArrays(by key): $existingArrays');
     // No metaArray at all previously exists - create a new one
-    if (existingArrays == null) {
+    // if (existingArrays == null) {
+    if (existingArrays.length == 0) {
       print(
           'group_channel_view: markConfettiMessageRead: No prior messageMetaArray found for message: ${message.message}. Creating a new one...');
       BaseMessage updatedMessage = await channel.addMessageMetaArray(message, [
