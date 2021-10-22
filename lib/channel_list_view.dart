@@ -3,6 +3,8 @@ import 'package:sendbird_sdk/sendbird_sdk.dart';
 import 'group_channel_view.dart';
 
 class ChannelListView extends StatefulWidget {
+  const ChannelListView({Key? key}) : super(key: key);
+
   @override
   _ChannelListViewState createState() => _ChannelListViewState();
 }
@@ -77,14 +79,14 @@ class _ChannelListViewState extends State<ChannelListView>
       backgroundColor: Colors.white,
       centerTitle: true,
       leading: BackButton(color: Theme.of(context).primaryColor),
-      title: Text(
+      title: const Text(
         'Channels',
         style: TextStyle(color: Colors.black),
       ),
       actions: [
         Container(
           width: 60,
-          padding: EdgeInsets.fromLTRB(0, 10, 0, 10),
+          padding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
           child: TextButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/create_channel');

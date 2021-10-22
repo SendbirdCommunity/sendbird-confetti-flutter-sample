@@ -3,6 +3,8 @@ import '../group_channel_view.dart';
 import 'package:sendbird_sdk/sendbird_sdk.dart';
 
 class CreateChannelView extends StatefulWidget {
+  const CreateChannelView({Key? key}) : super(key: key);
+
   @override
   _CreateChannelViewState createState() => _CreateChannelViewState();
 }
@@ -28,8 +30,7 @@ class _CreateChannelViewState extends State<CreateChannelView> {
       final channel = await GroupChannel.createChannel(params);
       return channel;
     } catch (e) {
-      print('createChannel: ERROR: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -60,8 +61,8 @@ class _CreateChannelViewState extends State<CreateChannelView> {
       automaticallyImplyLeading: true,
       backgroundColor: Colors.white,
       centerTitle: true,
-      leading: BackButton(color: Theme.of(context).buttonColor),
-      title: Text(
+      leading: BackButton(color: Theme.of(context).primaryColor),
+      title: const Text(
         'Select members',
         style: TextStyle(color: Colors.black),
       ),
@@ -69,9 +70,9 @@ class _CreateChannelViewState extends State<CreateChannelView> {
         TextButton(
           style: ButtonStyle(
               foregroundColor: MaterialStateProperty.all<Color>(
-                  Theme.of(context).buttonColor)),
+                  Theme.of(context).primaryColor)),
           onPressed: () {
-            if (_selectedUsers.toList().length < 1) {
+            if (_selectedUsers.toList().isEmpty) {
               // Don't create a channel if there isn't another user selected
               return;
             }
@@ -108,7 +109,7 @@ class _CreateChannelViewState extends State<CreateChannelView> {
           User user = _availableUsers[index];
           return CheckboxListTile(
             title: Text(user.nickname.isEmpty ? user.userId : user.nickname,
-                style: TextStyle(color: Colors.black)),
+                style: const TextStyle(color: Colors.black)),
             controlAffinity: ListTileControlAffinity.platform,
             value: _selectedUsers.contains(user),
             // value: SendbirdSdk().currentUser.userId == user.userId,
