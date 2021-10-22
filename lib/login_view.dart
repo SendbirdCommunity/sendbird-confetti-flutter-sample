@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:sendbird_sdk/sendbird_sdk.dart';
 
 class LoginView extends StatefulWidget {
+  const LoginView({Key? key}) : super(key: key);
+
   @override
   LoginViewState createState() => LoginViewState();
 }
@@ -27,28 +29,29 @@ class LoginViewState extends State<LoginView> {
       elevation: 0,
       backgroundColor: Colors.white,
       automaticallyImplyLeading: true,
-      title: Text('Sendbird Sample', style: TextStyle(color: Colors.black)),
-      actions: [],
+      title:
+          const Text('Sendbird Sample', style: TextStyle(color: Colors.black)),
+      actions: const [],
       centerTitle: true,
     );
   }
 
   Widget body(BuildContext context) {
     return Container(
-        padding: EdgeInsets.only(left: 20, right: 20, top: 100),
+        padding: const EdgeInsets.only(left: 20, right: 20, top: 100),
         child: Column(
           children: [
-            Container(
+            const SizedBox(
                 width: 50,
                 height: 50,
                 child: Image(
                   image: AssetImage('assets/logoSendbird@3x.png'),
                   fit: BoxFit.scaleDown,
                 )),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Text('Sendbird Sample',
                 style: Theme.of(context).textTheme.headline6),
-            SizedBox(height: 40),
+            const SizedBox(height: 40),
             TextField(
               controller: _appIdController,
               onChanged: (value) {
@@ -65,10 +68,10 @@ class LoginViewState extends State<LoginView> {
                     onPressed: () {
                       _appIdController.clear();
                     },
-                    icon: Icon(Icons.clear),
+                    icon: const Icon(Icons.clear),
                   )),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             TextField(
               controller: _userIdController,
               onChanged: (value) {
@@ -85,10 +88,10 @@ class LoginViewState extends State<LoginView> {
                     onPressed: () {
                       _userIdController.clear();
                     },
-                    icon: Icon(Icons.clear),
+                    icon: const Icon(Icons.clear),
                   )),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 30),
             FractionallySizedBox(
               widthFactor: 1,
               child: _signInButton(context, _enableSignInButton),
@@ -134,7 +137,7 @@ class LoginViewState extends State<LoginView> {
           print('login_view: _signInButton: ERROR: $error');
         });
       },
-      child: Text(
+      child: const Text(
         "Sign In",
         style: TextStyle(fontSize: 20.0),
       ),
@@ -144,12 +147,11 @@ class LoginViewState extends State<LoginView> {
   Future<User> connect(String appId, String userId) async {
     // Init Sendbird SDK and connect with current user id
     try {
-      final sendbird = SendbirdSdk(appId: appId);
-      final user = await sendbird.connect(userId);
+      SendbirdSdk sendbird = SendbirdSdk(appId: appId);
+      User user = await sendbird.connect(userId);
       return user;
     } catch (e) {
-      print('login_view: connect: ERROR: $e');
-      throw e;
+      rethrow;
     }
   }
 }
