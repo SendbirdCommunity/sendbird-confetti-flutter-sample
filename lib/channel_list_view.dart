@@ -130,7 +130,6 @@ class _ChannelListViewState extends State<ChannelListView>
 
   void gotoChannel(String channelUrl) {
     GroupChannel.getChannel(channelUrl).then((channel) {
-      Navigator.pushNamed(context, '/channel_list');
       Navigator.push(
         context,
         MaterialPageRoute(
