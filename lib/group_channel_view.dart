@@ -43,14 +43,10 @@ class _GroupChannelViewState extends State<GroupChannelView>
 
   @override
   onMessageReceived(channel, message) {
-    if (mounted == true) {
-      setState(() {
-        // Add the message to this UI instance
-        // Insert at index 0 as we're displaying in reverse:
-        // Bottom -> Top (Newest -> Oldest)
-        _messages.insert(0, message);
-      });
-    }
+    // For simplicity, just going to call Sendbird for all messages
+    // so that we're sure we also get any metaArray data associated with it
+    // rather than also checking the onMessageUpdated callback.
+    getMessages(channel as GroupChannel);
   }
 
   Future<void> getMessages(GroupChannel channel) async {
@@ -107,9 +103,7 @@ class _GroupChannelViewState extends State<GroupChannelView>
     ChatUser user = asDashChatUser(sbUser);
 
     // Run all received messages through special effects check
-    // if (mounted == true) {
     _sfxController.checkAndTriggerAll(widget.groupChannel, _messages);
-    // }
 
     // Creating a list of widgets to feed into a Stack widget later
     List<Widget> stackUIs = [
@@ -121,12 +115,9 @@ class _GroupChannelViewState extends State<GroupChannelView>
     stackUIs.add(DashChat(
       key: Key(widget.groupChannel.channelUrl),
       onSend: (ChatMessage message) async {
-        var sentMessage =
-            widget.groupChannel.sendUserMessageWithText(message.text);
+        widget.groupChannel.sendUserMessageWithText(message.text);
         if (mounted == true) {
-          setState(() {
-            _messages.add(sentMessage);
-          });
+          getMessages(widget.groupChannel);
         }
       },
       currentUser: user,
@@ -136,6 +127,7 @@ class _GroupChannelViewState extends State<GroupChannelView>
             InputDecoration.collapsed(hintText: "Type a message here..."),
       ),
       messageOptions: MessageOptions(
+          showCurrentUserAvatar: true,
           timeFormat: DateFormat.jm(),
           messageDecorationBuilder: (ChatMessage message,
               ChatMessage? priorMessage, ChatMessage? nextMessage) {
@@ -183,6 +175,7 @@ class _GroupChannelViewState extends State<GroupChannelView>
     return ChatUser(
       id: user.userId,
       firstName: user.nickname,
+      profileImage: user.profileUrl ?? "",
     );
   }
 }
