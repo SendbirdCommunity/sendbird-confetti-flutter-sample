@@ -16,7 +16,18 @@ class _CreateChannelViewState extends State<CreateChannelView> {
   Future<List<User>> getUsers() async {
     try {
       final query = ApplicationUserListQuery();
+
+      // Only loads first set of users. Create a refresh mechanism
+      // to cycle through a long list of users
       List<User> users = await query.loadNext();
+
+      // Remove current user from display list, they will be
+      // automatically added when the create button is tapped
+      User? currentUser = SendbirdSdk().currentUser;
+      if (currentUser != null) {
+        users.removeWhere((user) => user.userId == currentUser.userId);
+      }
+
       return users;
     } catch (e) {
       print('create_channel_view: getUsers: ERROR: $e');
@@ -50,7 +61,6 @@ class _CreateChannelViewState extends State<CreateChannelView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // backgroundColor: Colors.white,
       appBar: navigationBar(),
       body: body(context),
     );
@@ -63,8 +73,11 @@ class _CreateChannelViewState extends State<CreateChannelView> {
       centerTitle: true,
       leading: BackButton(color: Theme.of(context).primaryColor),
       title: const Text(
-        'Select members',
-        style: TextStyle(color: Colors.black),
+        'Select users',
+        style: TextStyle(
+          color: Colors.black,
+          fontSize: 18.0,
+        ),
       ),
       actions: [
         TextButton(
@@ -76,6 +89,14 @@ class _CreateChannelViewState extends State<CreateChannelView> {
               // Don't create a channel if there isn't another user selected
               return;
             }
+
+            // Add the existing user so they're apart of this new channel
+            User? currentUser = SendbirdSdk().currentUser;
+            if (currentUser != null) {
+              _selectedUsers.add(currentUser);
+            }
+
+            // Create a new channel with the selected users
             createChannel(
                     [for (final user in _selectedUsers.toList()) user.userId])
                 .then((channel) {

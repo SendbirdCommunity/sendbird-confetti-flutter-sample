@@ -113,6 +113,8 @@ class SendbirdSFX {
     return true;
   }
 
+  // Override if you want to change how to check for substrings or
+  // target keywords
   bool stringContainsOneOf(List<String> keywords, String string,
       {bool caseSensitive = false}) {
     for (String keyword in keywords) {
@@ -139,8 +141,15 @@ class SendbirdSFX {
 
     // Pre-existing meta record not recorded - message has
     if (arrays.isEmpty == true) {
+      debugCallback?.call(
+          "SendbirdSFX $metaKey: alreadyDisplayedFor: message: `${message.message}`: metaArray is empty for key $metaKey");
       return false;
     }
+
+    debugCallback?.call(
+        "SendbirdSFX $metaKey: alreadyDisplayedFor: message: `${message.message}`: metaArray: ${message.getMetaArrays([
+          metaKey
+        ])[0].value}");
 
     MessageMetaArray array = arrays[0];
     return array.value.contains(userId);
