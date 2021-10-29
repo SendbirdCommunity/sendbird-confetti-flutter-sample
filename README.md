@@ -34,7 +34,7 @@ This sample consists of several features, including:
 <br />
 
 <p align="center">
-<img src="repo_assets/sample_ui.gif">
+<img src="repo_assets/flutter_confetti.gif">
 </p>
 
 <br />
